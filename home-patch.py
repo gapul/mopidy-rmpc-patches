@@ -24,15 +24,28 @@ if "ytmusic:home" not in s:
             try:
                 for _i, _sec in enumerate(self.backend.api.get_home(limit=100)):
                     _t = _sec.get("title") or ("Section %d" % _i)
-                    refs.append(Ref.directory(uri="ytmusic:home:%d" % _i, name=_t))
+                    # タイトルを URI に埋め、セクション順が変わっても開けるようにする
+                    refs.append(Ref.directory(uri="ytmusic:home:%d:%s" % (_i, _t), name=_t))
             except Exception:
                 logger.exception("YTMusic get_home failed")
             return refs
         if uri.startswith("ytmusic:home:"):
             refs = []
             try:
-                _idx = int(uri.split(":")[2])
+                _parts = uri.split(":", 3)
+                _idx = int(_parts[2])
+                _title = _parts[3] if len(_parts) > 3 else None
                 _home = self.backend.api.get_home(limit=100)
+                # get_home() はリスト時と別呼び出しでフィードが入れ替わり得るため、
+                # まずタイトル一致を確認し、ズレていればタイトルで探し直す (無ければ index 継続)
+                if _title is not None and not (
+                    0 <= _idx < len(_home)
+                    and (_home[_idx].get("title") or ("Section %d" % _idx)) == _title
+                ):
+                    for _j, _sec2 in enumerate(_home):
+                        if (_sec2.get("title") or ("Section %d" % _j)) == _title:
+                            _idx = _j
+                            break
                 if 0 <= _idx < len(_home):
                     for _it in (_home[_idx].get("contents") or []):
                         if not isinstance(_it, dict):
