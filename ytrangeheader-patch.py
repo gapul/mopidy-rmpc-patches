@@ -17,14 +17,17 @@ if "on_source_setup" not in s:
     assert s.count(hdr_anchor) == 1, f"headers anchor count={s.count(hdr_anchor)}"
     s = s.replace(hdr_anchor, hdr_new, 1)
 
-    # 2) verify の HEAD にも同じヘッダ + Range を付ける (素の HEAD は 403 になる)
+    # 2) verify を再生と同じ形のリクエストにする。HEAD は googlevideo が気まぐれに 403 を
+    #    返すことがあり (同じ URL への Range 付き GET は 206)、再生できる曲を
+    #    unplayable として捨ててしまう。1バイトだけの Range 付き GET に置き換える。
     head_anchor = "                verify = requests.head(url, timeout=5, allow_redirects=True)\n"
     head_new = (
         "                _vh = dict(info.get(\"http_headers\") or {})\n"
-        "                _vh[\"Range\"] = \"bytes=0-\"\n"
-        "                verify = requests.head(\n"
-        "                    url, timeout=5, allow_redirects=True, headers=_vh\n"
+        "                _vh[\"Range\"] = \"bytes=0-0\"\n"
+        "                verify = requests.get(\n"
+        "                    url, timeout=5, allow_redirects=True, headers=_vh, stream=True\n"
         "                )\n"
+        "                verify.close()\n"
     )
     assert s.count(head_anchor) == 1, f"head anchor count={s.count(head_anchor)}"
     s = s.replace(head_anchor, head_new, 1)
