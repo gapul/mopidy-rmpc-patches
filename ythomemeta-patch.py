@@ -72,6 +72,26 @@ if "YTMusic home: failed to cache track metadata" not in s:
     assert s.count(tail_anchor) == 1, f"getTrack tail anchor count={s.count(tail_anchor)}"
     s = s.replace(tail_anchor, tail_new, 1)
 
+    # 3) lookup() は TRACKS を直接見て getTrack() を飛ばしていたため、上の長さ補完が
+    #    素通しされていた。キャッシュの判断は getTrack() の1か所に任せる。
+    lu_anchor = '''        if (bId) in self.TRACKS:
+            return [self.TRACKS[bId]]
+        else:
+            try:
+                return [self.getTrack(bId)]
+            except Exception:
+                logger.exception('YTMusic failed to get track "%s"', bId)
+        return []
+'''
+    lu_new = '''        try:
+            return [self.getTrack(bId)]
+        except Exception:
+            logger.exception('YTMusic failed to get track "%s"', bId)
+        return []
+'''
+    assert s.count(lu_anchor) == 1, f"lookup anchor count={s.count(lu_anchor)}"
+    s = s.replace(lu_anchor, lu_new, 1)
+
     open(p, "w").write(s)
     print("patched library.py: home の曲メタデータを YTM 側の値でキャッシュ")
 else:
