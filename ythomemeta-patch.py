@@ -22,10 +22,19 @@ if "YTMusic home: failed to cache track metadata" not in s:
                     ]
                     if _songs:
                         try:
+                            # 既に長さを補完済みのものは、その値を引き継ぐ。引き継がないと
+                            # 開き直すたびに length=None に戻り、曲数ぶんの get_song() が
+                            # 毎回走って一覧の表示が何秒もかかる。
+                            _prev = {}
+                            for _it in _songs:
+                                _c = self.TRACKS.get(_it["videoId"])
+                                if _c is not None and _c.length:
+                                    _prev[_it["videoId"]] = _c.length
                             for _t in self.playlistToTracks({"tracks": _songs}):
                                 if not _t.length:
-                                    self.TRACKS[_t.uri.rsplit(":", 1)[-1]] = _t.replace(
-                                        length=None
+                                    _vid = _t.uri.rsplit(":", 1)[-1]
+                                    self.TRACKS[_vid] = _t.replace(
+                                        length=_prev.get(_vid)
                                     )
                         except Exception:
                             logger.debug(
