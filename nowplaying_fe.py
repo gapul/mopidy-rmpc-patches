@@ -13,6 +13,17 @@ try:
     import objc
     from Foundation import NSBundle
 
+    # バンドルを持たない素の python プロセスだと mediaremoted のクライアント名が
+    # "python3.13" になり、コントロールセンターやメディアキーの取り合いで
+    # バンドル ID を持つアプリ (ブラウザ等) に負ける。main bundle の info 辞書に
+    # 後から ID と名前を差し込んで、一人前のクライアントとして名乗る。
+    _main = NSBundle.mainBundle()
+    _info = _main.localizedInfoDictionary() or _main.infoDictionary()
+    if _info is not None:
+        _info["CFBundleIdentifier"] = "net.gapul.mopidy"
+        _info["CFBundleName"] = "Mopidy"
+        _info["CFBundleDisplayName"] = "Mopidy"
+
     NSBundle.bundleWithPath_(
         "/System/Library/Frameworks/MediaPlayer.framework"
     ).load()
