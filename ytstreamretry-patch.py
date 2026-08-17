@@ -55,6 +55,16 @@ if "_get_track_once" not in s:
     assert s.count(dl_anchor) == 1, f"is_live anchor count={s.count(dl_anchor)}"
     s = s.replace(dl_anchor, dl_new, 1)
 
+    # 検証は「GStreamer と同じか、それより厳しい形」でないと意味がない。Range 付きなら
+    # 通るのに Range 無しだと 403 になる URL が実在し (6回中4回)、Range 付きで検証すると
+    # 「検証は通るのに再生できない」になる。Range 無しで確かめる。
+    vh_anchor = '''                _vh["Range"] = "bytes=0-0"
+'''
+    vh_new = '''                _vh.pop("Range", None)
+'''
+    assert s.count(vh_anchor) == 1, f"verify anchor count={s.count(vh_anchor)}"
+    s = s.replace(vh_anchor, vh_new, 1)
+
     s = s.rstrip("\n") + '''
 
     def _stream_url_alive(self, url, headers):
@@ -65,7 +75,7 @@ if "_get_track_once" not in s:
             return True
         try:
             _h = dict(headers or {})
-            _h["Range"] = "bytes=0-0"
+            _h.pop("Range", None)
             r = requests.get(url, timeout=5, allow_redirects=True, headers=_h, stream=True)
             r.close()
         except Exception:
